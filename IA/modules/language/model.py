@@ -3,22 +3,31 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 def run(ai, text):
     """
-    Procesa el texto usando la red neuronal de Gripen.
-    Devuelve un número como predicción, usando la red neuronal que ya está en ai.model.
+    Procesa texto con la red neuronal de Gripen.
     """
-    # --- Paso 1: Convertir texto a secuencias numéricas ---
-    # Entrenamos el tokenizer con la frase (solo ejemplo)
-    ai.tokenizer.fit_on_texts([text])
-    seq = ai.tokenizer.texts_to_sequences([text])
+    MAX_LEN = 15  # Debe coincidir con train.py
     
-    # Rellenamos a longitud 10 (igual que la red espera)
-    seq_padded = pad_sequences(seq, maxlen=10)
-    
-    # --- Paso 2: Predicción con la red ---
-    pred = ai.model.predict(seq_padded, verbose=0)
-    
-    # --- Paso 3: Convertir resultado en respuesta ---
-    # Por ahora, un ejemplo simple: si pred>0.5 "Sí", si <0.5 "No"
-    respuesta = "Sí" if pred[0][0] > 0.5 else "No"
-    
-    return f"Gripen predice: {respuesta} (valor: {pred[0][0]:.2f})"
+    # Convertir texto a secuencia
+    try:
+        seq = ai.tokenizer.texts_to_sequences([text.lower().strip()])
+        seq_padded = pad_sequences(seq, maxlen=MAX_LEN)
+        
+        # Predicción
+        pred = ai.model.predict(seq_padded, verbose=0)
+        valor = pred[0][0]
+        
+        # Interpretar resultado
+        if valor > 0.65:  # Confianza alta en SÍ
+            respuesta = "Sí"
+            confianza = valor
+        elif valor < 0.35:  # Confianza alta en NO
+            respuesta = "No"
+            confianza = 1 - valor
+        else:  # Zona gris (indeciso)
+            respuesta = "No estoy seguro"
+            confianza = 0.5
+        
+        return f"{respuesta} (confianza: {confianza:.1%})"
+        
+    except Exception as e:
+        return f"Error al procesar: {str(e)}"
